@@ -4,5 +4,5 @@ logging:
   level:
     org:
       springframework:
-        security: trace
+        security: debug
     club.lemos: debug

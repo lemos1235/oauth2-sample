@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select an Account - Unified Login System</title>
+</head>
+<body class="home-page">
+    <div class="home-container">
+        <h1 class="home-title">Select an Account</h1>
+        <p class="home-subtitle">Continue with the current account or switch to a different account</p>
+
+        <div class="select-account-buttons">
+            <form th:action="@{/select-account/continue}" method="post" style="margin: 0;" onsubmit="return disableFormSubmit(this)">
+                <button type="submit" class="select-account-btn btn-continue">
+                    Continue with this account
+                </button>
+            </form>
+
+            <form th:action="@{/select-account/switch}" method="post" style="margin: 0;" onsubmit="return disableFormSubmit(this)">
+                <button type="submit" class="select-account-btn btn-switch">
+                    Use another account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Prevent duplicate submissions
+        function disableFormSubmit(form) {
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+            }
+            return true;
+        }
+
+        // Prevent back button
+        history.pushState(null, null, location.href);
+        window.addEventListener('popstate', function () {
+            history.pushState(null, null, location.href);
+        });
+    </script>
+</body>
+</html>

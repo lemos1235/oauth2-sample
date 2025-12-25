@@ -1,6 +1,10 @@
 package club.lemos.oauth2serverdemo.security;
 
-
+import club.lemos.oauth2serverdemo.constant.SecurityConstant;
+import club.lemos.oauth2serverdemo.security.support.AccountSelectionFilter;
+import club.lemos.oauth2serverdemo.security.support.CustomLogoutSuccessHandler;
+import club.lemos.oauth2serverdemo.security.support.LoginFailureHandler;
+import club.lemos.oauth2serverdemo.security.support.LoginSuccessHandler;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -36,8 +40,12 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.RememberMeServices;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -65,7 +73,18 @@ public class SecurityConf {
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
             throws Exception {
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+                new OAuth2AuthorizationServerConfigurer();
+        RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
+        http
+                .securityMatcher(endpointsMatcher)
+                .authorizeHttpRequests(authorize ->
+                        authorize.anyRequest().authenticated()
+                )
+//                .csrf(AbstractHttpConfigurer::disable)
+                .with(authorizationServerConfigurer, Customizer.withDefaults());
+        // filter
+        http.addFilterAfter(new AccountSelectionFilter(), SecurityContextHolderFilter.class);
         http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
                 .oidc(Customizer.withDefaults());
         http
@@ -88,12 +107,25 @@ public class SecurityConf {
         http.csrf(AbstractHttpConfigurer::disable);
         http
                 .authorizeHttpRequests((authorize) -> authorize
+                        .requestMatchers("/login", "/logout", "/select-account")
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
                 .rememberMe((remember) -> remember
                         .rememberMeServices(rememberMeServices)
+                        .authenticationSuccessHandler(new SavedRequestAwareAuthenticationSuccessHandler())
                 )
-                .formLogin(Customizer.withDefaults());
+                .logout((logout) ->
+                        logout.deleteCookies("user", "LAST_CORP_CODE", SecurityConstant.COOKIE_REMEMBER_ME)
+                                .invalidateHttpSession(true)
+                                .logoutRequestMatcher(PathPatternRequestMatcher.withDefaults().matcher("/logout"))
+                                .logoutSuccessHandler(new CustomLogoutSuccessHandler())
+                )
+                .formLogin((formLogin) ->
+                        formLogin.loginPage("/login")
+                                .loginProcessingUrl("/login")
+                                .successHandler(new LoginSuccessHandler())
+                                .failureHandler(new LoginFailureHandler()));
         return http.build();
     }
 
